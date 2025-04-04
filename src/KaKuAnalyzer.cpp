@@ -1,8 +1,8 @@
-#include "SimpleSerialAnalyzer.h"
-#include "SimpleSerialAnalyzerSettings.h"
+#include "KaKuAnalyzer.h"
+#include "KaKuAnalyzerSettings.h"
 #include <AnalyzerChannelData.h>
 
-SimpleSerialAnalyzer::SimpleSerialAnalyzer()
+KaKuAnalyzer::KaKuAnalyzer()
 :	Analyzer2(),  
 	mSettings(),
 	mSimulationInitilized( false )
@@ -10,20 +10,20 @@ SimpleSerialAnalyzer::SimpleSerialAnalyzer()
 	SetAnalyzerSettings( &mSettings );
 }
 
-SimpleSerialAnalyzer::~SimpleSerialAnalyzer()
+KaKuAnalyzer::~KaKuAnalyzer()
 {
 	KillThread();
 }
 
-void SimpleSerialAnalyzer::SetupResults()
+void KaKuAnalyzer::SetupResults()
 {
 	// SetupResults is called each time the analyzer is run. Because the same instance can be used for multiple runs, we need to clear the results each time.
-	mResults.reset(new SimpleSerialAnalyzerResults( this, &mSettings ));
+	mResults.reset(new KaKuAnalyzerResults( this, &mSettings ));
 	SetAnalyzerResults( mResults.get() );
 	mResults->AddChannelBubblesWillAppearOn( mSettings.mInputChannel );
 }
 
-void SimpleSerialAnalyzer::WorkerThread()
+void KaKuAnalyzer::WorkerThread()
 {
 	mSampleRateHz = GetSampleRate();
 
@@ -73,12 +73,12 @@ void SimpleSerialAnalyzer::WorkerThread()
 	}
 }
 
-bool SimpleSerialAnalyzer::NeedsRerun()
+bool KaKuAnalyzer::NeedsRerun()
 {
 	return false;
 }
 
-U32 SimpleSerialAnalyzer::GenerateSimulationData( U64 minimum_sample_index, U32 device_sample_rate, SimulationChannelDescriptor** simulation_channels )
+U32 KaKuAnalyzer::GenerateSimulationData( U64 minimum_sample_index, U32 device_sample_rate, SimulationChannelDescriptor** simulation_channels )
 {
 	if( mSimulationInitilized == false )
 	{
@@ -89,24 +89,24 @@ U32 SimpleSerialAnalyzer::GenerateSimulationData( U64 minimum_sample_index, U32 
 	return mSimulationDataGenerator.GenerateSimulationData( minimum_sample_index, device_sample_rate, simulation_channels );
 }
 
-U32 SimpleSerialAnalyzer::GetMinimumSampleRateHz()
+U32 KaKuAnalyzer::GetMinimumSampleRateHz()
 {
 	return mSettings.mBitRate * 4;
 }
 
-const char* SimpleSerialAnalyzer::GetAnalyzerName() const
+const char* KaKuAnalyzer::GetAnalyzerName() const
 {
-	return "Simple Serial";
+	return "Classic KaKu";
 }
 
 const char* GetAnalyzerName()
 {
-	return "Simple Serial";
+	return "Classic KaKu";
 }
 
 Analyzer* CreateAnalyzer()
 {
-	return new SimpleSerialAnalyzer();
+	return new KaKuAnalyzer();
 }
 
 void DestroyAnalyzer( Analyzer* analyzer )
