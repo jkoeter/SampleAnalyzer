@@ -3,6 +3,16 @@
 
 #include <SimulationChannelDescriptor.h>
 #include <string>
+#include <vector>
+
+typedef enum
+{
+	Low = 0,
+	High,
+	X
+} KakuBit;
+
+
 class KaKuAnalyzerSettings;
 
 class KaKuSimulationDataGenerator
@@ -19,9 +29,13 @@ protected:
 	U32 mSimulationSampleRateHz;
 
 protected:
-	void CreateSerialByte();
+	/* Sample members */
+	void CreateKakuFrame();
 	std::string mSerialText;
 	U32 mStringIndex;
+
+	/* real implememtation */
+	std::vector<KakuBit> mKakuFrame;
 
 	SimulationChannelDescriptor mSerialSimulationData;
 

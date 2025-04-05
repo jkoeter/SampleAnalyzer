@@ -5,7 +5,8 @@
 
 KaKuSimulationDataGenerator::KaKuSimulationDataGenerator()
 :	mSerialText( "My first analyzer, woo hoo!" ),
-	mStringIndex( 0 )
+	mStringIndex( 0 ),
+	mKakuFrame({Low, Low, Low, Low, High, High, Low, Low, X, X, X})
 {
 }
 
@@ -29,43 +30,75 @@ U32 KaKuSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 
 	while( mSerialSimulationData.GetCurrentSampleNumber() < adjusted_largest_sample_requested )
 	{
-		CreateSerialByte();
+		CreateKakuFrame();
 	}
 
 	*simulation_channel = &mSerialSimulationData;
 	return 1;
 }
 
-void KaKuSimulationDataGenerator::CreateSerialByte()
+void KaKuSimulationDataGenerator::CreateKakuFrame()
 {
-	U32 samples_per_bit = mSimulationSampleRateHz / mSettings->mBitRate;
-
-	U8 byte = mSerialText[ mStringIndex ];
-	mStringIndex++;
-	if( mStringIndex == mSerialText.size() )
-		mStringIndex = 0;
+	U32 T = (200 * mSimulationSampleRateHz) / 1000000;  // short pulse is 200uS
 
 	//we're currenty high
 	//let's move forward a little
-	mSerialSimulationData.Advance( samples_per_bit * 10 );
+	mSerialSimulationData.Advance( T /*samples_per_bit * 10 */ );
 
-	mSerialSimulationData.Transition();  //low-going edge for start bit
-	mSerialSimulationData.Advance( samples_per_bit );  //add start bit time
+	mSerialSimulationData.TransitionIfNeeded( BIT_LOW );  //low-going because we need rising edge for start bit
+	mSerialSimulationData.Advance( T ); 
 
-	U8 mask = 0x1 << 7;
-	for( U32 i=0; i<8; i++ )
+	mSerialSimulationData.TransitionIfNeeded( BIT_LOW );
+	mSerialSimulationData.Advance( T );
+
+	for(const KakuBit& bit : mKakuFrame)
 	{
-		if( ( byte & mask ) != 0 )
-			mSerialSimulationData.TransitionIfNeeded( BIT_HIGH );
-		else
-			mSerialSimulationData.TransitionIfNeeded( BIT_LOW );
-
-		mSerialSimulationData.Advance( samples_per_bit );
-		mask = mask >> 1;
+	    switch (bit)
+		{
+		case Low:
+			// pulse 1
+			mSerialSimulationData.Transition(); // HIGH
+			mSerialSimulationData.Advance( 1*T );
+			mSerialSimulationData.Transition(); // LOW
+			mSerialSimulationData.Advance( 3*T );
+			// pulse 2
+			mSerialSimulationData.Transition(); // HIGH
+			mSerialSimulationData.Advance( 1*T );
+			mSerialSimulationData.Transition(); // LOW
+			mSerialSimulationData.Advance( 3*T );
+			break;
+		case High:
+			// pulse 1
+			mSerialSimulationData.Transition(); // HIGH
+			mSerialSimulationData.Advance( 3*T );
+			mSerialSimulationData.Transition(); // LOW
+			mSerialSimulationData.Advance( 1*T );
+			// pulse 2
+			mSerialSimulationData.Transition(); // HIGH
+			mSerialSimulationData.Advance( 3*T );
+			mSerialSimulationData.Transition(); // LOW
+			mSerialSimulationData.Advance( 1*T );
+			break;
+		case X:
+			// pulse 1
+			mSerialSimulationData.Transition(); // HIGH
+			mSerialSimulationData.Advance( 1*T );
+			mSerialSimulationData.Transition(); // LOW
+			mSerialSimulationData.Advance( 3*T );
+			// pulse 2
+			mSerialSimulationData.Transition(); // HIGH
+			mSerialSimulationData.Advance( 3*T );
+			mSerialSimulationData.Transition(); // LOW
+			mSerialSimulationData.Advance( 1*T );
+			break;
+		}
 	}
 
-	mSerialSimulationData.TransitionIfNeeded( BIT_HIGH ); //we need to end high
-
-	//lets pad the end a bit for the stop bit:
-	mSerialSimulationData.Advance( samples_per_bit );
+	// Add stop condition
+	mSerialSimulationData.Transition();
+	mSerialSimulationData.Advance( T );
+	mSerialSimulationData.Transition();
+	mSerialSimulationData.Advance( 40*T );
+	mSerialSimulationData.Transition();
+	mSerialSimulationData.Advance( 40*T );
 }
