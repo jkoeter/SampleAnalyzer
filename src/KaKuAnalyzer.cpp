@@ -26,46 +26,71 @@ void KaKuAnalyzer::SetupResults()
 void KaKuAnalyzer::WorkerThread()
 {
 	mSampleRateHz = GetSampleRate();
-
 	mSerial = GetAnalyzerChannelData( mSettings.mInputChannel );
-
-	if( mSerial->GetBitState() == BIT_LOW )
-		mSerial->AdvanceToNextEdge();
-
-	U32 samples_per_bit = mSampleRateHz / mSettings.mBitRate;
-	U32 samples_to_first_center_of_first_data_bit = U32( 1.5 * double( mSampleRateHz ) / double( mSettings.mBitRate ) );
 
 	for( ; ; )
 	{
-		U8 data = 0;
-		U8 mask = 1 << 7;
+		U64 MinSamplesPerBit = ( 200 * mSampleRateHz) / 1000000;
+		U64 MaxSamplesPerBit = (1200 * mSampleRateHz) / 1000000;
+		U64 MaxSamplesShortPulse = (600 * mSampleRateHz) / 1000000;
 		
-		mSerial->AdvanceToNextEdge(); //falling edge -- beginning of the start bit
+		if( mSerial->GetBitState() == BIT_HIGH ) // we need a rising edge first so we need to be low
+			mSerial->AdvanceToNextEdge();
 
-		U64 starting_sample = mSerial->GetSampleNumber();
+		mSerial->AdvanceToNextEdge(); // rising edge
+		U64 pulse1_starting_sample = mSerial->GetSampleNumber();
 
-		mSerial->Advance( samples_to_first_center_of_first_data_bit );
+		//mSerial->AdvanceToNextEdge(); // falling edge
+		U64 pulse1_ending_sample = mSerial->GetSampleOfNextEdge();
 
-		for( U32 i=0; i<8; i++ )
-		{
-			//let's put a dot exactly where we sample this bit:
-			mResults->AddMarker( mSerial->GetSampleNumber(), AnalyzerResults::Dot, mSettings.mInputChannel );
+		U64 pulse1_duration = pulse1_ending_sample - pulse1_starting_sample;
+		// check for pulse validity
+		if ((pulse1_duration < MinSamplesPerBit) || (pulse1_duration > MaxSamplesPerBit))
+			continue;
+		mSerial->AdvanceToNextEdge();
 
-			if( mSerial->GetBitState() == BIT_HIGH )
-				data |= mask;
+		U64 pulse2_ending_sample = mSerial->GetSampleOfNextEdge();
+		U64 pulse2_duration = pulse2_ending_sample - pulse1_ending_sample;
+		// check for pulse validity
+		if ((pulse2_duration < MinSamplesPerBit) || (pulse2_duration > MaxSamplesPerBit))
+			continue;
+		mSerial->AdvanceToNextEdge(); // rising edge
 
-			mSerial->Advance( samples_per_bit );
+		U64 pulse3_ending_sample = mSerial->GetSampleOfNextEdge();
 
-			mask = mask >> 1;
-		}
+		U64 pulse3_duration = pulse3_ending_sample - pulse2_ending_sample;
+		// check for pulse validity
+		if ((pulse3_duration < MinSamplesPerBit) || (pulse3_duration > MaxSamplesPerBit))
+			continue;
+		mSerial->AdvanceToNextEdge(); // rising edge
+	
+		U64 pulse4_ending_sample = mSerial->GetSampleOfNextEdge(); // rising edge --> dont move, we need this edge the next loop
+
+		U64 pulse4_duration = pulse4_ending_sample - pulse3_ending_sample;
+		// check for pulse validity
+		if ((pulse4_duration < MinSamplesPerBit) || (pulse4_duration > MaxSamplesPerBit))
+			continue;
+
+		/* Determine bit-value */
+		U8 value = 9;
+		if ((pulse1_duration < pulse2_duration) &&
+		    (pulse3_duration < pulse4_duration))
+			value = 0;
+		if ((pulse1_duration > pulse2_duration) &&
+		    (pulse3_duration > pulse4_duration))
+			value = 1;
+
+		if ((pulse1_duration < pulse2_duration) &&
+		    (pulse3_duration > pulse4_duration))
+			value = 2;
 
 
-		//we have a byte to save. 
+		//we have a bit to save. 
 		Frame frame;
-		frame.mData1 = data;
+		frame.mData1 = value;
 		frame.mFlags = 0;
-		frame.mStartingSampleInclusive = starting_sample;
-		frame.mEndingSampleInclusive = mSerial->GetSampleNumber();
+		frame.mStartingSampleInclusive = pulse1_starting_sample;
+		frame.mEndingSampleInclusive = pulse4_ending_sample;
 
 		mResults->AddFrame( frame );
 		mResults->CommitResults();
@@ -91,7 +116,7 @@ U32 KaKuAnalyzer::GenerateSimulationData( U64 minimum_sample_index, U32 device_s
 
 U32 KaKuAnalyzer::GetMinimumSampleRateHz()
 {
-	return mSettings.mBitRate * 4;
+	return 100000; // 100KHz
 }
 
 const char* KaKuAnalyzer::GetAnalyzerName() const

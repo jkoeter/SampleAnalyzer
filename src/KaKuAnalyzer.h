@@ -7,6 +7,7 @@
 #include "KaKuSimulationDataGenerator.h"
 #include <memory>
 
+
 class ANALYZER_EXPORT KaKuAnalyzer : public Analyzer2
 {
 public:
