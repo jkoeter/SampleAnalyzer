@@ -39,17 +39,18 @@ U32 KaKuSimulationDataGenerator::GenerateSimulationData( U64 largest_sample_requ
 
 void KaKuSimulationDataGenerator::CreateKakuFrame()
 {
-	U32 T = (200 * mSimulationSampleRateHz) / 1000000;  // short pulse is 200uS
+	U32 Tshort = (400 * mSimulationSampleRateHz) / 1000000;  // short pulse is 400uS
+	U32 Tlong =  (1100 * mSimulationSampleRateHz) / 1000000;  // long pulse is 1100uS
 
 	//we're currenty high
 	//let's move forward a little
-	mSerialSimulationData.Advance( T /*samples_per_bit * 10 */ );
+	mSerialSimulationData.Advance( Tshort /*samples_per_bit * 10 */ );
 
 	mSerialSimulationData.TransitionIfNeeded( BIT_LOW );  //low-going because we need rising edge for start bit
-	mSerialSimulationData.Advance( T ); 
+	mSerialSimulationData.Advance( Tshort ); 
 
 	mSerialSimulationData.TransitionIfNeeded( BIT_LOW );
-	mSerialSimulationData.Advance( T );
+	mSerialSimulationData.Advance( Tshort );
 
 	for(const KakuBit& bit : mKakuFrame)
 	{
@@ -58,47 +59,47 @@ void KaKuSimulationDataGenerator::CreateKakuFrame()
 		case Low:
 			// pulse 1
 			mSerialSimulationData.Transition(); // HIGH
-			mSerialSimulationData.Advance( 1*T );
+			mSerialSimulationData.Advance( Tshort );
 			mSerialSimulationData.Transition(); // LOW
-			mSerialSimulationData.Advance( 3*T );
+			mSerialSimulationData.Advance( Tlong );
 			// pulse 2
 			mSerialSimulationData.Transition(); // HIGH
-			mSerialSimulationData.Advance( 1*T );
+			mSerialSimulationData.Advance( Tshort );
 			mSerialSimulationData.Transition(); // LOW
-			mSerialSimulationData.Advance( 3*T );
+			mSerialSimulationData.Advance( Tlong );
 			break;
 		case High:
 			// pulse 1
 			mSerialSimulationData.Transition(); // HIGH
-			mSerialSimulationData.Advance( 3*T );
+			mSerialSimulationData.Advance( Tlong );
 			mSerialSimulationData.Transition(); // LOW
-			mSerialSimulationData.Advance( 1*T );
+			mSerialSimulationData.Advance( Tshort );
 			// pulse 2
 			mSerialSimulationData.Transition(); // HIGH
-			mSerialSimulationData.Advance( 3*T );
+			mSerialSimulationData.Advance( Tlong );
 			mSerialSimulationData.Transition(); // LOW
-			mSerialSimulationData.Advance( 1*T );
+			mSerialSimulationData.Advance( Tshort );
 			break;
 		case X:
 			// pulse 1
 			mSerialSimulationData.Transition(); // HIGH
-			mSerialSimulationData.Advance( 1*T );
+			mSerialSimulationData.Advance( Tshort );
 			mSerialSimulationData.Transition(); // LOW
-			mSerialSimulationData.Advance( 3*T );
+			mSerialSimulationData.Advance( Tlong );
 			// pulse 2
 			mSerialSimulationData.Transition(); // HIGH
-			mSerialSimulationData.Advance( 3*T );
+			mSerialSimulationData.Advance( Tlong );
 			mSerialSimulationData.Transition(); // LOW
-			mSerialSimulationData.Advance( 1*T );
+			mSerialSimulationData.Advance( Tshort );
 			break;
 		}
 	}
 
 	// Add stop condition
 	mSerialSimulationData.Transition();
-	mSerialSimulationData.Advance( T );
+	mSerialSimulationData.Advance( Tshort );
 	mSerialSimulationData.Transition();
-	mSerialSimulationData.Advance( 40*T );
+	mSerialSimulationData.Advance( 40*Tshort );
 	mSerialSimulationData.Transition();
-	mSerialSimulationData.Advance( 40*T );
+	mSerialSimulationData.Advance( 40*Tshort );
 }
